@@ -129,7 +129,6 @@ Compilation is stubbed out, and every element is given an overlay."
          (org-typst-inline-trigger ,trigger)
          (org-typst-inline-delay 0.0)
          (org-typst-inline-manual-linger nil)
-         (org-typst-inline-snippet-display 'image)
          (org-typst-inline--results (make-hash-table :test #'equal)))
      (cl-letf (((symbol-function 'org-typst-inline--request) #'ignore))
        (org-typst-inline-test--with-buffer ,text
@@ -254,13 +253,6 @@ Compilation is stubbed out, and every element is given an overlay."
               (should (eq (plist-get (cdr (overlay-get ov 'display)) :ascent)
                           'center)))
           (delete-file file))))))
-
-(ert-deftest org-typst-inline-test-snippet-glyph ()
-  (org-typst-inline-test--with-mode "Snippet @@typst:#x@@ here\n" 'always
-    (let ((org-typst-inline-snippet-display 'glyph)
-          (ov (car (org-typst-inline--all-overlays))))
-      (org-typst-inline--render ov)
-      (should (equal (overlay-get ov 'display) org-typst-inline-snippet-glyph)))))
 
 ;;;; Typst integration
 

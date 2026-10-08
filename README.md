@@ -8,7 +8,7 @@ Org バッファ内の Typst 断片を SVG としてインライン表示し、�
 | --- | --- | --- |
 | インライン数式 | `$x^2$`, `\(x^2\)` | 行内に `:ascent center` で表示 |
 | ディスプレイ数式 | `\[ sum_(i=1)^n i \]`, `$$ ... $$`, `\begin{equation} ... \end{equation}` | 中央寄せで別行に表示 |
-| export snippet | `@@typst:#emoji.face@@` | 画像として描画するか、Nerd Fonts のグリフ1文字に畳む |
+| export snippet | `@@typst:#emoji.face@@` | Typst マークアップとして描画し、行内に表示 |
 
 数式の中身は Typst 記法として扱います（ox-typst の `org-typst-from-latex-with-naive` と同じ前提）。src / example ブロック、コメント、`=verbatim=`、`~code~` の中にあるものは対象外です。`\foo{bar}` のような LaTeX コマンド形式の fragment も無視します。
 
@@ -38,8 +38,6 @@ Org バッファ内の Typst 断片を SVG としてインライン表示し、�
 | `org-typst-inline-typst-program` | `"typst"` | typst の実行ファイル |
 | `org-typst-inline-preamble` | `""` | テンプレートの後に挿入する Typst（フォント指定など） |
 | `org-typst-inline-scale` | `1.0` | `default` face の高さに掛ける倍率 |
-| `org-typst-inline-snippet-display` | `image` | snippet の表示方式（`image` / `glyph`） |
-| `org-typst-inline-snippet-glyph` | `""` | `glyph` のときに表示する文字（nf-fa-code） |
 | `org-typst-inline-placeholder` | `nil` | コンパイル中の表示（`nil` ならソースを薄く表示） |
 | `org-typst-inline-cache-directory` | `~/.config/emacs/org-typst-inline/` | SVG キャッシュの保存先 |
 | `org-typst-inline-max-processes` | `4` | 同時に動かす typst プロセスの数 |
@@ -87,10 +85,7 @@ Org バッファ内の Typst 断片を SVG としてインライン表示し、�
 
 (use-package org-typst-inline
   :vc (:url "https://github.com/rei78-4e/org-typst-inline" :rev :newest)
-  :hook (org-mode . org-typst-inline-mode)
-  :custom
-  ;; Fold export-only snippets such as @@typst:#pagebreak()@@.
-  (org-typst-inline-snippet-display 'glyph))
+  :hook (org-mode . org-typst-inline-mode))
 ```
 
 ## テスト

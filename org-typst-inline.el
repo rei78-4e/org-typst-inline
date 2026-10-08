@@ -35,8 +35,7 @@
 ;; - LaTeX fragments `$...$', `\(...\)', `$$...$$' and `\[...\]', and
 ;;   LaTeX environments.  Their contents are read as Typst math, which
 ;;   is what ox-typst's `org-typst-from-latex-with-naive' assumes.
-;; - Export snippets `@@typst:...@@', either rendered or folded into a
-;;   single glyph (see `org-typst-inline-snippet-display').
+;; - Export snippets `@@typst:...@@', rendered as Typst markup.
 ;;
 ;; Only visible text is processed (through jit-lock), Typst runs
 ;; asynchronously, and results are cached in memory and on disk.
@@ -85,18 +84,6 @@ Use it for fonts or show rules, for example:
 (defcustom org-typst-inline-scale 1.0
   "Factor applied to the height of the `default' face when rendering."
   :type 'number)
-
-(defcustom org-typst-inline-snippet-display 'image
-  "How to display `@@typst:...@@' export snippets.
-`image' renders the snippet with Typst.  `glyph' folds the snippet
-into `org-typst-inline-snippet-glyph'."
-  :type '(choice (const :tag "Rendered image" image)
-                 (const :tag "Single glyph" glyph)))
-
-(defcustom org-typst-inline-snippet-glyph ""
-  "String displayed in place of a folded export snippet.
-The default is the Nerd Fonts \"nf-fa-code\" glyph."
-  :type 'string)
 
 (defcustom org-typst-inline-placeholder nil
   "What to display while a fragment is being compiled.
@@ -149,10 +136,6 @@ The fragment is then hidden when the cursor leaves it.  Ignored when
 (defface org-typst-inline-error
   '((t :inherit error :underline (:style wave)))
   "Face for fragments that failed to compile.")
-
-(defface org-typst-inline-glyph
-  '((t :inherit font-lock-constant-face))
-  "Face for folded export snippets.")
 
 ;;;; State
 
@@ -430,11 +413,6 @@ also reveals it."
             (org-typst-inline--overlays-in (max (point-min) (1- pos))
                                            (min (point-max) (1+ pos)))))
 
-(defun org-typst-inline--glyph-p (ov)
-  "Return non-nil if OV is a snippet folded into a glyph."
-  (and (eq (overlay-get ov 'org-typst-inline-kind) 'snippet)
-       (eq org-typst-inline-snippet-display 'glyph)))
-
 (defun org-typst-inline--text-scale ()
   "Return the image scale for the current `text-scale-mode' amount."
   (if (bound-and-true-p text-scale-mode)
@@ -464,31 +442,26 @@ also reveals it."
     (unless (overlay-get ov 'org-typst-inline-revealed)
       (let ((source (buffer-substring-no-properties (overlay-start ov)
                                                     (overlay-end ov))))
-        (if (org-typst-inline--glyph-p ov)
-            (progn
-              (overlay-put ov 'display (propertize org-typst-inline-snippet-glyph
-                                                   'face 'org-typst-inline-glyph))
-              (overlay-put ov 'help-echo source))
-          (pcase (gethash (overlay-get ov 'org-typst-inline-key)
-                          org-typst-inline--results)
-            ((and (pred stringp) file)
-             (let ((image (create-image file 'svg nil
-                                        :ascent 'center
-                                        :scale (org-typst-inline--text-scale))))
-               (overlay-put ov 'display image)
-               (overlay-put ov 'help-echo source)
-               (when (eq (overlay-get ov 'org-typst-inline-kind) 'display)
-                 (let ((strings (org-typst-inline--display-strings ov image)))
-                   (overlay-put ov 'before-string (car strings))
-                   (overlay-put ov 'after-string (cdr strings))))))
-            (`(error . ,message)
-             (overlay-put ov 'face 'org-typst-inline-error)
-             (overlay-put ov 'help-echo message))
-            (_
-             (if org-typst-inline-placeholder
-                 (overlay-put ov 'display org-typst-inline-placeholder)
-               (overlay-put ov 'face 'org-typst-inline-pending))
-             (overlay-put ov 'help-echo "Compiling with Typst..."))))))))
+        (pcase (gethash (overlay-get ov 'org-typst-inline-key)
+                        org-typst-inline--results)
+          ((and (pred stringp) file)
+           (let ((image (create-image file 'svg nil
+                                      :ascent 'center
+                                      :scale (org-typst-inline--text-scale))))
+             (overlay-put ov 'display image)
+             (overlay-put ov 'help-echo source)
+             (when (eq (overlay-get ov 'org-typst-inline-kind) 'display)
+               (let ((strings (org-typst-inline--display-strings ov image)))
+                 (overlay-put ov 'before-string (car strings))
+                 (overlay-put ov 'after-string (cdr strings))))))
+          (`(error . ,message)
+           (overlay-put ov 'face 'org-typst-inline-error)
+           (overlay-put ov 'help-echo message))
+          (_
+           (if org-typst-inline-placeholder
+               (overlay-put ov 'display org-typst-inline-placeholder)
+             (overlay-put ov 'face 'org-typst-inline-pending))
+           (overlay-put ov 'help-echo "Compiling with Typst...")))))))
 
 (defun org-typst-inline--reveal (ov)
   "Show the source text of OV."
@@ -501,9 +474,8 @@ also reveals it."
   "Show the rendered preview of OV, compiling it if needed."
   (when (overlay-buffer ov)
     (overlay-put ov 'org-typst-inline-revealed nil)
-    (unless (org-typst-inline--glyph-p ov)
-      (org-typst-inline--request (overlay-get ov 'org-typst-inline-key)
-                                 (overlay-get ov 'org-typst-inline-source)))
+    (org-typst-inline--request (overlay-get ov 'org-typst-inline-key)
+                               (overlay-get ov 'org-typst-inline-source))
     (org-typst-inline--render ov)))
 
 (defun org-typst-inline--reveal-on-create-p (ov pos)
