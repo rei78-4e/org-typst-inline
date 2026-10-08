@@ -85,6 +85,13 @@ Use it for fonts or show rules, for example:
   "Factor applied to the height of the `default' face when rendering."
   :type 'number)
 
+(defcustom org-typst-inline-display-align 'center
+  "Horizontal position of display math on its line.
+One of `left', `center' or `right'."
+  :type '(choice (const :tag "Left" left)
+                 (const :tag "Center" center)
+                 (const :tag "Right" right)))
+
 (defcustom org-typst-inline-placeholder nil
   "What to display while a fragment is being compiled.
 nil shows the source text with the `org-typst-inline-pending' face.
@@ -419,8 +426,25 @@ also reveals it."
       (expt text-scale-mode-step text-scale-mode-amount)
     1.0))
 
+(defun org-typst-inline--align-fraction ()
+  "Return `org-typst-inline-display-align' as a fraction from 0 to 1."
+  (pcase org-typst-inline-display-align
+    ('left 0.0)
+    ('right 1.0)
+    (_ 0.5)))
+
+(defun org-typst-inline--align-spec (image)
+  "Return the :align-to position that places IMAGE on its line.
+The free space in the text area is split according to
+`org-typst-inline--align-fraction'.  Positions such as `right' cannot
+be scaled or subtracted from each other in a space specification, so
+the offset is built from `left' plus widths; unlike `center', this
+also stays correct with `display-line-numbers'."
+  (let ((fraction (org-typst-inline--align-fraction)))
+    `(+ left (- (,fraction . text) (,fraction . ,image)))))
+
 (defun org-typst-inline--display-strings (ov image)
-  "Return (BEFORE . AFTER) strings that center IMAGE of OV on its own line."
+  "Return (BEFORE . AFTER) strings that put IMAGE of OV on its own line."
   (let ((bol (save-excursion
                (goto-char (overlay-start ov))
                (skip-chars-backward " \t")
@@ -431,7 +455,8 @@ also reveals it."
                (eolp))))
     (cons (concat (unless bol "\n")
                   (propertize " " 'display
-                              `(space :align-to (- center (0.5 . ,image)))))
+                              `(space :align-to
+                                      ,(org-typst-inline--align-spec image))))
           (unless eol "\n"))))
 
 (defun org-typst-inline--render (ov)

@@ -254,6 +254,14 @@ Compilation is stubbed out, and every element is given an overlay."
                           'center)))
           (delete-file file))))))
 
+(ert-deftest org-typst-inline-test-align ()
+  (dolist (case '((left . 0.0) (center . 0.5) (right . 1.0)))
+    (let ((org-typst-inline-display-align (car case)))
+      (should (= (org-typst-inline--align-fraction) (cdr case)))))
+  (let ((org-typst-inline-display-align 'center))
+    (should (equal (org-typst-inline--align-spec 'img)
+                   '(+ left (- (0.5 . text) (0.5 . img)))))))
+
 ;;;; Typst integration
 
 (ert-deftest org-typst-inline-test-compile ()
