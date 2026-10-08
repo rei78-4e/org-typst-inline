@@ -283,6 +283,10 @@ COLOR is a #RRGGBB string and SIZE a font size in points."
   "Return a Typst document rendering BODY of KIND with COLOR and SIZE."
   (concat "#set page(width: auto, height: auto, margin: 2pt, fill: none)\n"
           (format "#set text(size: %.2fpt, fill: rgb(\"%s\"))\n" size color)
+          ;; Size the page by the glyphs' real extent.  The default
+          ;; cap-height/baseline edges let descenders, subscripts and
+          ;; denominators overflow the margin and get clipped.
+          "#set text(top-edge: \"bounds\", bottom-edge: \"bounds\")\n"
           org-typst-inline-preamble "\n"
           (pcase kind
             ('inline (format "$%s$" body))
@@ -290,10 +294,15 @@ COLOR is a #RRGGBB string and SIZE a font size in points."
             (_ body))
           "\n"))
 
+(defconst org-typst-inline--template-version 2
+  "Version of the template in `org-typst-inline--source'.
+Bump it whenever the template changes so stale images are not reused.")
+
 (defun org-typst-inline--cache-key (kind body color size)
   "Return the cache key for BODY of KIND rendered with COLOR and SIZE."
   (secure-hash 'sha1 (prin1-to-string
-                      (list kind body color (format "%.2f" size)
+                      (list org-typst-inline--template-version
+                            kind body color (format "%.2f" size)
                             org-typst-inline-preamble
                             org-typst-inline-typst-program))))
 
